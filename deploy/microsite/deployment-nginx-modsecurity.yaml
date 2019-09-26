@@ -1,0 +1,93 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  labels:
+    workload.user.cattle.io/workloadselector: deployment-thangtq-com
+  name: nginx
+  namespace: thangtq-com
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      workload.user.cattle.io/workloadselector: deployment-thangtq-com
+  template:
+    metadata:
+      labels:
+        workload.user.cattle.io/workloadselector: deployment-thangtq-com
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: microsite3
+                operator: In
+                values:
+                - "yes"
+      containers:
+      - image: registry.thangtq.com/sysadmin/nginx:1.2-modsecurity
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 2
+          successThreshold: 1
+          tcpSocket:
+            port: 443
+          timeoutSeconds: 2
+        name: test
+        ports:
+        - containerPort: 443
+          hostPort: 9669
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 2
+          successThreshold: 2
+          tcpSocket:
+            port: 443
+          timeoutSeconds: 2
+        volumeMounts:
+        - mountPath: /etc/nginx
+          name: nginx-conf
+        - mountPath: /var/www/thangtq.com
+          name: data
+        - mountPath: /var/log/nginx
+          name: log
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: registry-thangtq-com
+      restartPolicy: Always
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: nginx-conf
+          items:
+            - key: nginx.conf
+              path: nginx.conf
+            - key: thangtq.com.conf
+              path: conf.d/thangtq.com.conf
+            - key: thangtq.com.crt
+              path: ssl/thangtq.com.crt
+            - key: thangtq.com.key
+              path: ssl/thangtq.com.key
+            - key: modsecurity.conf
+              path: modsecurity/modsecurity.conf
+            - key: modsecurity_crs_10_setup.conf
+              path: modsecurity/base_rules/modsecurity_crs_10_setup.conf
+            - key: modsecurity_crs_41_sql_injection_attacks.conf
+              path: modsecurity/base_rules/modsecurity_crs_41_sql_injection_attacks.conf
+            - key: modsecurity_crs_41_xss_attacks.conf
+              path: modsecurity/base_rules/modsecurity_crs_41_xss_attacks.conf
+            - key: unicode.mapping
+              path: modsecurity/unicode.mapping
+      - name: data
+        hostPath:
+          path: /data/web/thangtq.com
+          type: DirectoryOrCreate
+      - name: log
+        hostPath:
+          path: /data/log/nginx
+          type: DirectoryOrCreate
+

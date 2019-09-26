@@ -1,0 +1,1 @@
+kubectl create configmap nginx-conf --namespace thangtq-com --from-file nginx/
