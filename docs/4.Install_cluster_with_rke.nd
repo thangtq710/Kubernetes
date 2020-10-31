@@ -1,0 +1,128 @@
+### Hướng dẫn triển khai k8s cluster với rke (recommend sử dụng để triển khai production )
+
+### I. Mô hình triển khai
+
+192.168.1.12 - master1 + etcd1 + worker
+
+192.168.1.13 - master2 + etcd2 + worker
+
+192.168.1.14 - master3 + etcd3 + worker
+
+192.168.1.15 - worker1
+
+192.168.1.16 - worker2
+
+- Note: Trong production, bạn nên tách riêng node master + etcd với worker.
+
+### II. Steps
+
+- 1.Install docker on master + worker
+- 2.Install k8s với RKE
+
+### 1. Install docker on master + worker
+
+curl https://releases.rancher.com/install-docker/19.03.sh | sh
+
+### 2. Install k8s with RKE
+
+- Install rke (run on master1 or master2 or master3)
+
+```
+wget https://github.com/rancher/rke/releases/download/v1.1.11/rke_linux-amd64
+mv rke_linux-amd64 /usr/local/bin/rke
+chmod +x /usr/local/bin/rke
+```
+
+- Tạo file k8s-cluster.yml trên node master1 (Mô hình lab này tôi sử dụng user root, user root trên master 1 cần có quyền ssh tới tất cả các node)
+
+```
+cat > k8s-cluster.yml <<EOF
+
+nodes:
+  - address: 192.168.1.12
+    user: root
+    port: 22
+    ssh_key_path: ~/.ssh/id_rsa
+    labels:
+      app: ingress-master
+    role: [controlplane,etcd,worker]
+  - address: 192.168.1.13
+    user: root
+    port: 22
+    ssh_key_path: ~/.ssh/id_rsa
+    labels:
+      app: ingress-master
+    role: [controlplane,etcd,worker]
+  - address: 192.168.1.14
+    user: root
+    port: 22
+    ssh_key_path: ~/.ssh/id_rsa
+    role: [controlplane,etcd,worker]
+    labels:
+      app: ingress-master
+    
+  - address: 192.168.1.15
+    user: root
+    port: 22
+    ssh_key_path: ~/.ssh/id_rsa
+    role: [worker]
+    labels:
+      host: microsite1
+  - address: 192.168.1.16
+    user: root
+    port: 22
+    ssh_key_path: ~/.ssh/id_rsa
+    role: [worker]
+    labels:
+      host: microsite2
+
+services:
+  etcd:
+    snapshot: true
+    creation: 6h
+    retention: 24h
+
+ingress:
+    provider: nginx
+    node_selector:
+      app: ingress-master
+```
+
+- Install k8s:
+
+```
+rke up --config ./rancher-cluster.yml
+```
+
+- Install kubectl:
+
+```
+curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+chmod +x ./kubectl
+mv ./kubectl /usr/local/bin/kubectl
+```
+
+- Check the Health of cluster k8s with kubectl:
+
+```
+kubectl get pods --all-namespaces
+
+NAMESPACE       NAME                                      READY     STATUS      RESTARTS   AGE
+ingress-nginx   nginx-ingress-controller-tnsn4            1/1       Running     0          30s
+ingress-nginx   nginx-ingress-controller-tw2ht            1/1       Running     0          30s
+ingress-nginx   nginx-ingress-controller-v874b            1/1       Running     0          30s
+kube-system     canal-jp4hz                               3/3       Running     0          30s
+kube-system     canal-z2hg8                               3/3       Running     0          30s
+kube-system     canal-z6kpw                               3/3       Running     0          30s
+kube-system     kube-dns-7588d5b5f5-sf4vh                 3/3       Running     0          30s
+kube-system     kube-dns-autoscaler-5db9bbb766-jz2k6      1/1       Running     0          30s
+kube-system     metrics-server-97bc649d5-4rl2q            1/1       Running     0          30s
+kube-system     rke-ingress-controller-deploy-job-bhzgm   0/1       Completed   0          30s
+kube-system     rke-kubedns-addon-deploy-job-gl7t4        0/1       Completed   0          30s
+kube-system     rke-metrics-addon-deploy-job-7ljkc        0/1       Completed   0          30s
+kube-system     rke-network-plugin-deploy-job-6pbgj       0/1       Completed   0          30s
+```
+
+### Tài liệu tham khảo:
+
+- https://rancher.com/docs/rke/latest/en/example-yamls

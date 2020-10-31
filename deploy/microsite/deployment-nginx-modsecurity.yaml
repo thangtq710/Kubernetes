@@ -1,31 +1,22 @@
+https://carlos.mendible.com/2019/02/10/kubernetes-mount-file-pod-with-configmap/
+
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
-  labels:
-    workload.user.cattle.io/workloadselector: deployment-thangtq-com
   name: nginx
-  namespace: thangtq-com
+  namespace: yeuthuongtheodau-afamily-vn
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      workload.user.cattle.io/workloadselector: deployment-thangtq-com
   template:
     metadata:
       labels:
-        workload.user.cattle.io/workloadselector: deployment-thangtq-com
+        app: nginx
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: microsite3
-                operator: In
-                values:
-                - "yes"
+      hostNetwork: true
+      nodeSelector:
+        microsite3: "yes"
       containers:
-      - image: registry.thangtq.com/sysadmin/nginx:1.2-modsecurity
+      - image: registry.admicro.vn/sysadmin/ads_nginx:1.12.2-modsecurity
         imagePullPolicy: Always
         livenessProbe:
           failureThreshold: 3
@@ -35,10 +26,10 @@ spec:
           tcpSocket:
             port: 443
           timeoutSeconds: 2
-        name: test
+        name: nginx
         ports:
         - containerPort: 443
-          hostPort: 9669
+          hostPort: 8099
           protocol: TCP
         readinessProbe:
           failureThreshold: 3
@@ -50,44 +41,34 @@ spec:
           timeoutSeconds: 2
         volumeMounts:
         - mountPath: /etc/nginx
+          readOnly: true
           name: nginx-conf
-        - mountPath: /var/www/thangtq.com
-          name: data
+        - mountPath: /etc/nginx/conf.d/yeuthuongtheodau.afamily.vn.conf
+          name: yeuthuongtheodau-conf
+        - mountPath: /etc/nginx/ssl/admicro.vn.crt
+          name: ssl-cert
+        - mountPath: /etc/nginx/ssl/admicro.vn.key
+          name: ssl-key
         - mountPath: /var/log/nginx
           name: log
-      dnsPolicy: ClusterFirst
-      imagePullSecrets:
-      - name: registry-thangtq-com
-      restartPolicy: Always
+        - mountPath: /var/www/yeuthuongtheodau.afamily.vn
+          name: data
       volumes:
       - name: nginx-conf
         configMap:
           name: nginx-conf
-          items:
-            - key: nginx.conf
-              path: nginx.conf
-            - key: thangtq.com.conf
-              path: conf.d/thangtq.com.conf
-            - key: thangtq.com.crt
-              path: ssl/thangtq.com.crt
-            - key: thangtq.com.key
-              path: ssl/thangtq.com.key
-            - key: modsecurity.conf
-              path: modsecurity/modsecurity.conf
-            - key: modsecurity_crs_10_setup.conf
-              path: modsecurity/base_rules/modsecurity_crs_10_setup.conf
-            - key: modsecurity_crs_41_sql_injection_attacks.conf
-              path: modsecurity/base_rules/modsecurity_crs_41_sql_injection_attacks.conf
-            - key: modsecurity_crs_41_xss_attacks.conf
-              path: modsecurity/base_rules/modsecurity_crs_41_xss_attacks.conf
-            - key: unicode.mapping
-              path: modsecurity/unicode.mapping
+      - name: yeuthuongtheodau-conf
+        configMap:
+          name: yeuthuongtheodau-conf
+      - name: ssl-key
+        configMap:
+          name: ssl-key
+      - name: ssl-cert
+        configMap:
+          name: ssl-cert
       - name: data
         hostPath:
-          path: /data/web/thangtq.com
-          type: DirectoryOrCreate
+          path: /data/web/yeuthuongtheodau.afamily.vn
       - name: log
         hostPath:
           path: /data/log/nginx
-          type: DirectoryOrCreate
-
