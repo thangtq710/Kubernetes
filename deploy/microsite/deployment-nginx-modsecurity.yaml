@@ -4,7 +4,7 @@ apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
   name: nginx
-  namespace: yeuthuongtheodau-afamily-vn
+  namespace: test-vn
 spec:
   replicas: 1
   template:
@@ -16,7 +16,7 @@ spec:
       nodeSelector:
         microsite3: "yes"
       containers:
-      - image: registry.admicro.vn/sysadmin/ads_nginx:1.12.2-modsecurity
+      - image: registry.test.vn/nginx:1.12.2-modsecurity
         imagePullPolicy: Always
         livenessProbe:
           failureThreshold: 3
@@ -43,23 +43,23 @@ spec:
         - mountPath: /etc/nginx
           readOnly: true
           name: nginx-conf
-        - mountPath: /etc/nginx/conf.d/yeuthuongtheodau.afamily.vn.conf
-          name: yeuthuongtheodau-conf
-        - mountPath: /etc/nginx/ssl/admicro.vn.crt
+        - mountPath: /etc/nginx/conf.d/test.vn.conf
+          name: test-conf
+        - mountPath: /etc/nginx/ssl/test.vn.crt
           name: ssl-cert
-        - mountPath: /etc/nginx/ssl/admicro.vn.key
+        - mountPath: /etc/nginx/ssl/test.vn.key
           name: ssl-key
         - mountPath: /var/log/nginx
           name: log
-        - mountPath: /var/www/yeuthuongtheodau.afamily.vn
+        - mountPath: /var/www/test.vn
           name: data
       volumes:
       - name: nginx-conf
         configMap:
           name: nginx-conf
-      - name: yeuthuongtheodau-conf
+      - name: test-conf
         configMap:
-          name: yeuthuongtheodau-conf
+          name: test-conf
       - name: ssl-key
         configMap:
           name: ssl-key
@@ -68,7 +68,7 @@ spec:
           name: ssl-cert
       - name: data
         hostPath:
-          path: /data/web/yeuthuongtheodau.afamily.vn
+          path: /data/web/test.vn
       - name: log
         hostPath:
           path: /data/log/nginx
